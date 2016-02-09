@@ -29,7 +29,7 @@ class GenerateCategoriesCommandTest extends \PHPUnit_Framework_TestCase
         $cagegoriesCreator->expects($this->once())->method('launch');
         $objectManagerFactory->expects($this->once())->method('create')->willReturn($objectManager);
         $commandTester = new CommandTester(new GenerateCategoriesCommand($objectManagerFactory, $this->context));
-        $commandTester->execute([]);
+        $commandTester->execute(['--count' => 1]);
         $expectedMsg = 'Categories were successfully generated' . PHP_EOL;
         $this->assertSame($expectedMsg, $commandTester->getDisplay());
     }

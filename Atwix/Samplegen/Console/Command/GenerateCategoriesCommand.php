@@ -59,7 +59,8 @@ class GenerateCategoriesCommand extends Command
                 self::INPUT_KEY_DEPTH,
                 null,
                 InputOption::VALUE_OPTIONAL,
-                'Generated categories depth'
+                'Generated categories depth',
+                '3'
             )
         ];
         $this->setName(self::JOB_NAME)
@@ -73,22 +74,46 @@ class GenerateCategoriesCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $categoriesCount = $input->getOption(self::INPUT_KEY_COUNT);
+        $messages = $this->validate($categoriesCount);
+
+        if (!empty($messages)) {
+            $output->writeln(implode(PHP_EOL, $messages));
+            return;
+        }
+
         $omParams = $_SERVER;
         $omParams[StoreManager::PARAM_RUN_CODE] = 'admin';
         $omParams[Store::CUSTOM_ENTRY_POINT_PARAM] = true;
         $objectManager = $this->objectManagerFactory->create($omParams);
 
-        $params[self::INPUT_KEY_COUNT] = $input->getOption(self::INPUT_KEY_COUNT);
+        $params[self::INPUT_KEY_COUNT] = $categoriesCount;
         $params[self::INPUT_KEY_DEPTH] = $input->getOption(self::INPUT_KEY_DEPTH);
 
 
         $categoriesCreator = $objectManager->create('Atwix\Samplegen\Helper\CategoriesCreator',
-            ['context' => $this->context, 'parameters' => $params]);
+            ['context' => $this->context, 'objectManager' => $objectManager, 'parameters' => $params]);
         try {
             $categoriesCreator->launch();
             $output->writeln('<info>' . 'Categories were successfully generated' . '</info>');
         } catch (\Exception $e) {
             $output->writeln('<error>' . "{$e->getMessage()}" . '</error>');
         }
+    }
+
+    /**
+     * Validates categories count and returns error messages
+     *
+     * @param $count
+     * @return array
+     */
+    protected function validate($count)
+    {
+        $messages = [];
+        if (false == $count) {
+            $messages[] = '<error>No categories count specified</error>';
+        }
+
+        return $messages;
     }
 }
