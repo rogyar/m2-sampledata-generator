@@ -20,6 +20,7 @@ class GenerateCategoriesCommand extends Command
     const JOB_NAME = 'samplegen:generate:categories';
     const INPUT_KEY_COUNT = 'count';
     const INPUT_KEY_DEPTH = 'depth';
+    const INPUT_KEY_REMOVE = 'removeall';
 
     /**
      * Object manager factory
@@ -61,8 +62,16 @@ class GenerateCategoriesCommand extends Command
                 InputOption::VALUE_OPTIONAL,
                 'Generated categories depth',
                 '3'
+            ),
+            new InputOption(
+                self::INPUT_KEY_REMOVE,
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Remove all previously generated categories',
+                false
             )
         ];
+
         $this->setName(self::JOB_NAME)
             ->setDescription('Runs sample categories generation')
             ->setDefinition($options);
@@ -75,7 +84,8 @@ class GenerateCategoriesCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $categoriesCount = $input->getOption(self::INPUT_KEY_COUNT);
-        $messages = $this->validate($categoriesCount);
+        $removeGeneratedCategories = $input->getOption(self::INPUT_KEY_REMOVE);
+        $messages = $this->validate($categoriesCount, $removeGeneratedCategories);
 
         if (!empty($messages)) {
             $output->writeln(implode(PHP_EOL, $messages));
@@ -89,6 +99,7 @@ class GenerateCategoriesCommand extends Command
 
         $params[self::INPUT_KEY_COUNT] = $categoriesCount;
         $params[self::INPUT_KEY_DEPTH] = $input->getOption(self::INPUT_KEY_DEPTH);
+        $params[self::INPUT_KEY_REMOVE] = $removeGeneratedCategories;
 
 
         $categoriesCreator = $objectManager->create('Atwix\Samplegen\Helper\CategoriesCreator',
@@ -107,10 +118,10 @@ class GenerateCategoriesCommand extends Command
      * @param $count
      * @return array
      */
-    protected function validate($count)
+    protected function validate($count, $removeAll)
     {
         $messages = [];
-        if (false == $count) {
+        if (false == $count && false == $removeAll) {
             $messages[] = '<error>No categories count specified</error>';
         }
 
