@@ -2,6 +2,7 @@
 
 namespace Atwix\Samplegen\Helper;
 
+use Magento\Eav\Setup\EavSetup;
 use Magento\Framework\App\Helper\Context;
 use \Magento\Framework\ObjectManagerInterface;
 use \Magento\Framework\Registry;
@@ -10,6 +11,8 @@ use \Magento\Framework\Registry;
 class CategoriesCreator extends \Magento\Framework\App\Helper\AbstractHelper
 {
     const CAT_NAME_PREFIX = 'smlpgn_';
+    const DEFAULT_STORE_ID = 0;
+    const DEFAULT_CATEGORY_ID = 2;
     /**
      * @var $parameters array
      */
@@ -30,55 +33,87 @@ class CategoriesCreator extends \Magento\Framework\App\Helper\AbstractHelper
      */
     protected $registry;
 
-    protected $storeId;
+    //protected $eavSetup;
+
+   // protected $defaultAttributeSetId; // FIXME: already present in Category model
+
+    protected $processedCategoriesCount = 0;
 
     public function __construct(
         Context $context,
         ObjectManagerInterface $objectManager,
         Registry $registry,
+        //EavSetup $eavSetup,
         $parameters
     )
     {
         $this->parameters = $parameters;
         $this->objectManager = $objectManager;
         $this->registry = $registry;
+        //$this->eavSetup = $eavSetup;
         $this->titlesGenerator = $objectManager->create('Atwix\Samplegen\Helper\TitlesGenerator');
         parent::__construct($context);
     }
 
     public function launch()
     {
-        $this->storeId = 0; // TODO: get default store id somehow
         $this->registry->register('isSecureArea', true);
         $rootCategoryId = $this->objectManager->get(
             'Magento\Store\Model\StoreManagerInterface'
         )->getStore(
-            $this->storeId
+            self::DEFAULT_STORE_ID
         )->getRootCategoryId();
 
         if (false == $this->parameters['removeall']) {
-            //for ($catsCount = $this->parameters['count']; $catsCount >= 0; $catsCount--) {
-           return $this->createCategory($rootCategoryId);
-            // }
+            $this->normalizeDepth();
+            $defaultCategory = $this->objectManager->create('Magento\Catalog\Model\Category')
+                ->load(self::DEFAULT_CATEGORY_ID);
+//            $this->defaultAttributeSetId = $this->eavSetup->getDefaultAttributeSetId( // FIXME: already present in Category model
+//                $this->eavSetup->getEntityTypeId(\Magento\Catalog\Model\Category::ENTITY)
+//            );
+            while ($this->parameters['count'] >= $this->processedCategoriesCount) {
+                $currentCategory = $defaultCategory;
+                for ($depth = 0; $depth < $this->parameters['depth']; $depth++) {
+                    $currentCategory = $this->createCategory($currentCategory);
+                    $this->processedCategoriesCount++;
+                }
+            }
+
+            return true;
+
         } else {
             return $this->removeGeneratedCategories();
         }
     }
 
-    protected function createCategory($parentId)
+    /**
+     * Creates a new child category for $parentCategory
+     *
+     * @param \Magento\Catalog\Model\Category $parentCategory
+     * @return \Magento\Catalog\Model\Category
+     */
+    protected function createCategory($parentCategory)
     {
-        //for ($depth = $this->parameters['depth']; $depth >= 0; $depth--) {
-            /** @var \Magento\Catalog\Model\Category $category */
-            $category = $this->objectManager->create('Magento\Catalog\Model\Category');
-            $category->setStoreId($this->storeId);
-            $category->setParentId($parentId);
-            $category->setName(self::CAT_NAME_PREFIX . $this->titlesGenerator->generateCategoryTitle());
-            $category->save();
-            //$this->createCategory($category->getId());
-            return $category->getId();
-        //}
+        /** @var \Magento\Catalog\Model\Category $category */
+        $category = $this->objectManager->create('Magento\Catalog\Model\Category');
+        $category->setStoreId(self::DEFAULT_STORE_ID)
+            ->setParentId($parentCategory->getId())
+            ->setName(self::CAT_NAME_PREFIX . $this->titlesGenerator->generateCategoryTitle())
+            ->setAttributeSetId($category->getDefaultAttributeSetId())
+            ->setLevel($parentCategory->getLevel() + 1)
+            ->setPath($parentCategory->getPath())
+            ->setIsActive(1)
+            ->save();
+
+            return $category;
     }
 
+    /**
+     * Removes all previously generated categories by this tool
+     *
+     * @return bool
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
     protected function removeGeneratedCategories()
     {
         /** @var \Magento\Catalog\Model\Category $category */
@@ -96,5 +131,17 @@ class CategoriesCreator extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         return true;
+    }
+
+    /**
+     * If the depth's value is not applicable - tweaks it
+     */
+    protected function normalizeDepth()
+    {
+        if (empty($this->parameters['depth'])) {
+            $this->parameters['depth'] = 1;
+        } elseif ($this->parameters['depth'] > $this->parameters['count']) {
+            $this->parameters['depth'] = $this->parameters['count'];
+        }
     }
 }

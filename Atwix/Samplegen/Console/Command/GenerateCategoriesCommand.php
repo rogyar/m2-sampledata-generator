@@ -61,7 +61,7 @@ class GenerateCategoriesCommand extends Command
                 null,
                 InputOption::VALUE_OPTIONAL,
                 'Generated categories depth',
-                '3'
+                0
             ),
             new InputOption(
                 self::INPUT_KEY_REMOVE,
@@ -120,6 +120,7 @@ class GenerateCategoriesCommand extends Command
      */
     protected function validate($count, $removeAll)
     {
+        // TODO: check count for negative values
         $messages = [];
         if (false == $count && false == $removeAll) {
             $messages[] = '<error>No categories count specified</error>';
