@@ -33,24 +33,18 @@ class CategoriesCreator extends \Magento\Framework\App\Helper\AbstractHelper
      */
     protected $registry;
 
-    //protected $eavSetup;
-
-   // protected $defaultAttributeSetId; // FIXME: already present in Category model
-
     protected $processedCategoriesCount = 0;
 
     public function __construct(
         Context $context,
         ObjectManagerInterface $objectManager,
         Registry $registry,
-        //EavSetup $eavSetup,
         $parameters
     )
     {
         $this->parameters = $parameters;
         $this->objectManager = $objectManager;
         $this->registry = $registry;
-        //$this->eavSetup = $eavSetup;
         $this->titlesGenerator = $objectManager->create('Atwix\Samplegen\Helper\TitlesGenerator');
         parent::__construct($context);
     }
@@ -58,19 +52,12 @@ class CategoriesCreator extends \Magento\Framework\App\Helper\AbstractHelper
     public function launch()
     {
         $this->registry->register('isSecureArea', true);
-        $rootCategoryId = $this->objectManager->get(
-            'Magento\Store\Model\StoreManagerInterface'
-        )->getStore(
-            self::DEFAULT_STORE_ID
-        )->getRootCategoryId();
 
         if (false == $this->parameters['removeall']) {
             $this->normalizeDepth();
             $defaultCategory = $this->objectManager->create('Magento\Catalog\Model\Category')
                 ->load(self::DEFAULT_CATEGORY_ID);
-//            $this->defaultAttributeSetId = $this->eavSetup->getDefaultAttributeSetId( // FIXME: already present in Category model
-//                $this->eavSetup->getEntityTypeId(\Magento\Catalog\Model\Category::ENTITY)
-//            );
+
             while ($this->parameters['count'] >= $this->processedCategoriesCount) {
                 $currentCategory = $defaultCategory;
                 for ($depth = 0; $depth < $this->parameters['depth']; $depth++) {
