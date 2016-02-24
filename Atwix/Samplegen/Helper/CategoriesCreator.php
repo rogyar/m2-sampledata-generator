@@ -53,7 +53,7 @@ class CategoriesCreator extends \Magento\Framework\App\Helper\AbstractHelper
     {
         $this->registry->register('isSecureArea', true);
 
-        if (false == $this->parameters['removeall']) {
+        if (false == $this->parameters['removeall']) { // TODO: use a constant here
             $this->normalizeDepth();
             $defaultCategory = $this->objectManager->create('Magento\Catalog\Model\Category')
                 ->load(self::DEFAULT_CATEGORY_ID);

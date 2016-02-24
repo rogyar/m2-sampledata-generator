@@ -14,13 +14,35 @@ use Magento\Framework\App\Helper\Context;
 
 /**
  * Command for executing cron jobs
+ *
+ * Will generate N products
+ *
+ *
+ * If there's only 1 product - simple product
+ * If there are 2 products - a configurable with one simple product
+ * If there are 3 products will generate 1 gonfigurable with simple connected and one separate simple.
+ * The count of simple connected products 1..4
+ *
+ * So 30% will be configurable and 70% simple
+ *
+ * If there are no categories on the site - put all products into default category. Add also optional
+ * ability to put all products to the default category
+ *
+ * If there are some categories on the site, put products randomly to different categories (one product per category)
+ * and to the default category as well.
+ *
+ * Need to create a new attribute programmatically that is used for configurable product creation.
+ * Need to provide an ability to remove generated products and the attribute as well
+ *
  */
-class GenerateCategoriesCommand extends Command
+
+// TODO: refactor in order to create a parent abstract class
+
+class GenerateProductsCommand extends Command
 {
-    const JOB_NAME = 'samplegen:generate:categories';
+    const JOB_NAME = 'samplegen:generate:products';
     const INPUT_KEY_COUNT = 'count';
-    const INPUT_KEY_DEPTH = 'depth';
-    const INPUT_KEY_REMOVE = 'removeall'; // TODO: change to remove
+    const INPUT_KEY_REMOVE = 'remove';
 
     /**
      * Object manager factory
@@ -57,23 +79,16 @@ class GenerateCategoriesCommand extends Command
                 'Generated categories count'
             ),
             new InputOption(
-                self::INPUT_KEY_DEPTH,
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'Generated categories depth',
-                0
-            ),
-            new InputOption(
                 self::INPUT_KEY_REMOVE,
                 null,
                 InputOption::VALUE_OPTIONAL,
-                'Remove all previously generated categories',
+                'Remove all previously generated products',
                 false
             )
         ];
 
         $this->setName(self::JOB_NAME)
-            ->setDescription('Runs sample categories generation')
+            ->setDescription('Runs sample products generation')
             ->setDefinition($options);
         parent::configure();
     }
@@ -83,9 +98,9 @@ class GenerateCategoriesCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $categoriesCount = $input->getOption(self::INPUT_KEY_COUNT);
-        $removeGeneratedCategories = $input->getOption(self::INPUT_KEY_REMOVE);
-        $messages = $this->validate($categoriesCount, $removeGeneratedCategories);
+        $productsCount = $input->getOption(self::INPUT_KEY_COUNT);
+        $removeGeneratedItems = $input->getOption(self::INPUT_KEY_REMOVE);
+        $messages = $this->validate($productsCount, $removeGeneratedItems);
 
         if (!empty($messages)) {
             $output->writeln(implode(PHP_EOL, $messages));
@@ -97,16 +112,15 @@ class GenerateCategoriesCommand extends Command
         $omParams[Store::CUSTOM_ENTRY_POINT_PARAM] = true;
         $objectManager = $this->objectManagerFactory->create($omParams);
 
-        $params[self::INPUT_KEY_COUNT] = $categoriesCount;
-        $params[self::INPUT_KEY_DEPTH] = $input->getOption(self::INPUT_KEY_DEPTH);
-        $params[self::INPUT_KEY_REMOVE] = $removeGeneratedCategories;
+        $params[self::INPUT_KEY_COUNT] = $productsCount;
+        $params[self::INPUT_KEY_REMOVE] = $removeGeneratedItems;
 
 
-        $categoriesCreator = $objectManager->create('Atwix\Samplegen\Helper\CategoriesCreator',
+        $productsCreator = $objectManager->create('Atwix\Samplegen\Helper\ProductsCreator',
             ['context' => $this->context, 'objectManager' => $objectManager, 'parameters' => $params]);
         try {
-            $categoriesCreator->launch();
-            $output->writeln('<info>' . 'Categories were successfully generated' . '</info>');
+            $productsCreator->launch();
+            $output->writeln('<info>' . 'All operations completed successfully' . '</info>');
         } catch (\Exception $e) {
             $output->writeln('<error>' . "{$e->getMessage()}" . '</error>');
         }
@@ -123,7 +137,7 @@ class GenerateCategoriesCommand extends Command
         // TODO: check count for negative values
         $messages = [];
         if (false == $count && false == $removeAll) {
-            $messages[] = '<error>No categories count specified</error>';
+            $messages[] = '<error>No products count specified</error>';
         }
 
         return $messages;
