@@ -20,6 +20,11 @@ class TitlesGenerator
         return $this->generateAdjectivesNounPair();
     }
 
+    public function generateProductTitle()
+    {
+        return $this->generateAdjectivesNounPair();
+    }
+
     protected function generateAdjectivesNounPair()
     {
         $adjectives = '';

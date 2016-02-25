@@ -4,6 +4,7 @@
         <arguments>
             <argument name="commands" xsi:type="array">
                 <item name="sampleCatsGenerateCommand" xsi:type="object">Atwix\Samplegen\Console\Command\GenerateCategoriesCommand</item>
+                <item name="sampleProdsGenerateCommand" xsi:type="object">Atwix\Samplegen\Console\Command\GenerateProductsCommand</item>
             </argument>
         </arguments>
     </type>
