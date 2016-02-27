@@ -29,6 +29,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
     const CONFIGURABLE_PRODUCTS_PERCENT = 0.3;
     const CONFIGURABLE_CHILD_LIMIT = 4;
     const CONFIGURABLE_ATTRIBUTE = 'color';
+    const ATTRIBUTE_SET = 11;
     /**2
      * @var $parameters array
      */
@@ -166,7 +167,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 
         $product->setTypeId(Type::TYPE_SIMPLE)
             ->setStoreId(self::DEFAULT_STORE_ID)
-            ->setAttributeSetId($product->getDefaultAttributeSetId())
+            ->setAttributeSetId(self::ATTRIBUTE_SET)
             ->setName(self::NAMES_PREFIX . $this->titlesGenerator->generateProductTitle())
             ->setPrice(self::DEFAULT_PRODUCT_PRICE)
             ->setWeight(self::DEFAULT_PRODUCT_WEIGHT)
@@ -192,8 +193,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 
         $product->setCategoryIds($productCategories);
         if (false == $doNotSave) {
-            $product->save();
-            echo "separate simple product created \n";
+            $this->productRepository->save($product);
         }
 
         $this->processedProducts++;
@@ -224,25 +224,21 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         $childrenCount = rand(1, $childrenLimit);
-        //die('opts ' . count($availableOptions));
         $availableOptionsKeys = array_rand($availableOptions, $childrenCount);
 
         $childProductsIds = $configurableOptionsValues = [];
 
         for($optCount = 0; $optCount < $childrenCount; $optCount++ ) {
-
-            //$childProductsIds[] =
             $product = $this->createSimpleProduct(true, true);
             $optValueId =  is_array($availableOptionsKeys) ?
                 $availableOptions[$availableOptionsKeys[$optCount]]->getValue() :
                 $availableOptions[$availableOptionsKeys]->getValue();
-            $product->setCustomAttribute($configurableAttribute, $optValueId);
+            $product->setCustomAttribute($configurableAttribute->getAttributeCode(), $optValueId);
             $optionValue = $this->optionValue;
             $optionValue->setValueIndex($optValueId);
             $configurableOptionsValues[] = $optionValue;
-            //$product->save();
-            $this->productRepository->save($product);
-            echo "Simple product created \n";
+            $product = $this->productRepository->save($product);
+            $childProductsIds[] = $product->getId();
         }
 
         // Create configurable product
@@ -255,7 +251,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         $configurableProduct
             ->setStoreId(self::DEFAULT_STORE_ID)
             ->setTypeId('configurable')
-            ->setAttributeSetId($configurableProduct->getDefaultAttributeSetId())
+            ->setAttributeSetId(self::ATTRIBUTE_SET)
             ->setName(self::NAMES_PREFIX . $this->titlesGenerator->generateProductTitle() . ' configurable')
             ->setPrice(self::DEFAULT_PRODUCT_PRICE)
             ->setWeight(self::DEFAULT_PRODUCT_WEIGHT)
@@ -263,22 +259,20 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
             ->setWebsiteIds($websitesIds)
             ->setQty(self::DEFAULT_PRODUCT_QTY);
 
-        $configurableOption = $this->configurableOption->setLabel('Color');
+        $configurableOption = $this->configurableOption;
         $configurableOption->setAttributeId($configurableAttribute->getAttributeId())
+            ->setLabel('Color')
             ->setValues($configurableOptionsValues);
 
         $extensionAttributes = $configurableProduct->getExtensionAttributes();
         if (!$extensionAttributes) {
             $extensionAttributes = $this->productExtensionFactory->create();
         }
+
         $extensionAttributes->setConfigurableProductLinks($childProductsIds);
         $extensionAttributes->setConfigurableProductOptions([$configurableOption]);
-
         $configurableProduct->setExtensionAttributes($extensionAttributes);
-
-        //$configurableProduct->save();
         $this->productRepository->save($configurableProduct);
-        echo "Configurable product created \n";
         $this->processedProducts++;
     }
 
@@ -313,7 +307,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
             ->addAttributeToFilter('name', ['like' => self::NAMES_PREFIX . '%']);
 
         foreach ($productsCollection as $product) {
-            $product->delete();
+            $this->productRepository->delete($product);
        }
 
         return true;
