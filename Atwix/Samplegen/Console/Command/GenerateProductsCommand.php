@@ -115,6 +115,8 @@ class GenerateProductsCommand extends Command
         $params[self::INPUT_KEY_COUNT] = $productsCount;
         $params[self::INPUT_KEY_REMOVE] = $removeGeneratedItems;
 
+        $adminAppState = $objectManager->get('Magento\Framework\App\State');
+        $adminAppState->setAreaCode(\Magento\Framework\App\Area::AREA_ADMIN);
 
         $productsCreator = $objectManager->create('Atwix\Samplegen\Helper\ProductsCreator',
             ['context' => $this->context, 'objectManager' => $objectManager, 'parameters' => $params]);

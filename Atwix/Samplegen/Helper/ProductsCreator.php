@@ -2,9 +2,11 @@
 
 namespace Atwix\Samplegen\Helper;
 
+use Magento\Catalog\Api\Data\ProductExtensionFactory;
 use Magento\Catalog\Model\CategoryFactory;
 use Magento\CatalogWidget\Model\Rule\Condition\ProductFactory;
 use Magento\ConfigurableProduct\Api\Data\OptionInterface;
+use Magento\ConfigurableProduct\Api\Data\OptionValueInterface;
 use Magento\Framework\App\Helper\Context;
 use \Magento\Framework\ObjectManagerInterface;
 use \Magento\Framework\Registry;
@@ -12,6 +14,7 @@ use \Atwix\Samplegen\Console\Command\GenerateProductsCommand;
 use Magento\Catalog\Model\Product\Type as Type;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
+use Magento\Catalog\Api\ProductRepositoryInterface;
 
 // TODO refactor for ability to use abstract generator class
 
@@ -75,6 +78,21 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
      */
     protected $configurableOption;
 
+    /**
+     * @var \Magento\Catalog\Api\Data\ProductExtensionFactory
+     */
+    protected $productExtensionFactory;
+
+    /**
+     * @var \Magento\ConfigurableProduct\Api\Data\OptionValueInterface
+     */
+    protected $optionValue;
+
+    /**
+     * @var ProductRepositoryInterface
+     */
+    protected $productRepository;
+
 
     public function __construct(
         Context $context,
@@ -85,6 +103,9 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         ProductAttributeRepositoryInterface $attributeRepository,
         OptionInterface $configurableOption,
+        ProductExtensionFactory $productExtensionFactory,
+        OptionValueInterface $optionValue,
+        ProductRepositoryInterface $productRepository,
         $parameters
     )
     {
@@ -96,6 +117,9 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         $this->storeManager = $storeManager;
         $this->attributeRepository = $attributeRepository;
         $this->configurableOption = $configurableOption;
+        $this->productExtensionFactory = $productExtensionFactory;
+        $this->optionValue = $optionValue;
+        $this->productRepository = $productRepository;
         $this->titlesGenerator = $objectManager->create('Atwix\Samplegen\Helper\TitlesGenerator');
         parent::__construct($context);
     }
@@ -103,8 +127,6 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
     public function launch()
     {
         $this->registry->register('isSecureArea', true);
-        $adminAppState = $this->objectManager->get('Magento\Framework\App\State');
-        $adminAppState->setAreaCode(\Magento\Framework\App\Area::AREA_ADMIN);
 
         if (false == $this->parameters[GenerateProductsCommand::INPUT_KEY_REMOVE]) {
             return $this->createProducts();
@@ -119,7 +141,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 
             // Create configurable products at first
             $configurablesCount = round($this->getCount() * self::CONFIGURABLE_PRODUCTS_PERCENT);
-            for ($createdConfigurables = 0; $createdConfigurables <= $configurablesCount; $createdConfigurables++) {
+            for ($createdConfigurables = 0; $createdConfigurables < $configurablesCount; $createdConfigurables++) {
                 $this->createConfigurableProduct();
             }
 
@@ -134,7 +156,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 
     }
 
-    public function createSimpleProduct($forceDefaultCategory = false)
+    public function createSimpleProduct($forceDefaultCategory = false, $doNotSave = false)
     {
         /** @var \Magento\Catalog\Model\Product $product */
         $product = $this->objectManager->create('Magento\Catalog\Model\Product');
@@ -168,8 +190,12 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
             $productCategories[] = self::DEFAULT_CATEGORY_ID;
         }
 
-        $product->setCategoryIds($productCategories)
-            ->save();
+        $product->setCategoryIds($productCategories);
+        if (false == $doNotSave) {
+            $product->save();
+            echo "separate simple product created \n";
+        }
+
         $this->processedProducts++;
 
         return $product;
@@ -185,7 +211,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         // TODO: check if options are available
 
         // Create child simple products
-        $availableProductsCount = $this->getCount() - $this->processedProducts;
+        $availableProductsCount = $this->getCount() - ($this->processedProducts - 1);
 
         if ($availableProductsCount >= self::CONFIGURABLE_CHILD_LIMIT) {
             $childrenLimit = self::CONFIGURABLE_CHILD_LIMIT;
@@ -198,11 +224,25 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         $childrenCount = rand(1, $childrenLimit);
+        //die('opts ' . count($availableOptions));
         $availableOptionsKeys = array_rand($availableOptions, $childrenCount);
 
-        $childProductsIds = [];
-        foreach($availableOptionsKeys as $optionKey) {
-            $childProductsIds[] = $this->createSimpleProduct(true)->getId();
+        $childProductsIds = $configurableOptionsValues = [];
+
+        for($optCount = 0; $optCount < $childrenCount; $optCount++ ) {
+
+            //$childProductsIds[] =
+            $product = $this->createSimpleProduct(true, true);
+            $optValueId =  is_array($availableOptionsKeys) ?
+                $availableOptions[$availableOptionsKeys[$optCount]]->getValue() :
+                $availableOptions[$availableOptionsKeys]->getValue();
+            $product->setCustomAttribute($configurableAttribute, $optValueId);
+            $optionValue = $this->optionValue;
+            $optionValue->setValueIndex($optValueId);
+            $configurableOptionsValues[] = $optionValue;
+            //$product->save();
+            $this->productRepository->save($product);
+            echo "Simple product created \n";
         }
 
         // Create configurable product
@@ -214,8 +254,9 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         $configurableProduct = $this->objectManager->create('Magento\Catalog\Model\Product');
         $configurableProduct
             ->setStoreId(self::DEFAULT_STORE_ID)
+            ->setTypeId('configurable')
             ->setAttributeSetId($configurableProduct->getDefaultAttributeSetId())
-            ->setName(self::NAMES_PREFIX . $this->titlesGenerator->generateProductTitle())
+            ->setName(self::NAMES_PREFIX . $this->titlesGenerator->generateProductTitle() . ' configurable')
             ->setPrice(self::DEFAULT_PRODUCT_PRICE)
             ->setWeight(self::DEFAULT_PRODUCT_WEIGHT)
             ->setSku(uniqid())
@@ -224,13 +265,21 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 
         $configurableOption = $this->configurableOption->setLabel('Color');
         $configurableOption->setAttributeId($configurableAttribute->getAttributeId())
-            ->setValues();
+            ->setValues($configurableOptionsValues);
 
         $extensionAttributes = $configurableProduct->getExtensionAttributes();
+        if (!$extensionAttributes) {
+            $extensionAttributes = $this->productExtensionFactory->create();
+        }
         $extensionAttributes->setConfigurableProductLinks($childProductsIds);
         $extensionAttributes->setConfigurableProductOptions([$configurableOption]);
 
-        $configurableProduct->save();
+        $configurableProduct->setExtensionAttributes($extensionAttributes);
+
+        //$configurableProduct->save();
+        $this->productRepository->save($configurableProduct);
+        echo "Configurable product created \n";
+        $this->processedProducts++;
     }
 
     protected function getProductCategory()
@@ -257,20 +306,16 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 
     protected function removeGeneratedItems()
     {
-//        /** @var \Magento\Catalog\Model\Category $category */
-//        $product = $this->objectManager->create('Magento\Catalog\Model\Product'); // FIXME change to get
-//
-//        /** @var \Magento\Catalog\Model\ResourceModel\Category\Collection $categoriesCollection */
-//        $categoriesCollection = $category->getCollection();
-//        $generatedCategories = $categoriesCollection->addAttributeToFilter('name',
-//            ['like' => self::CAT_NAME_PREFIX . '%']);
-//
-//        /** @var \Magento\Catalog\Model\Category $generatedCategory */
-//        $generatedCategories = $generatedCategories->getItems();
-//        foreach ($generatedCategories as $generatedCategory) {
-//            $generatedCategory->delete();
-//        }
-//
-//        return true;
+        /** @var \Magento\Catalog\Model\Product $product */
+        $product = $this->objectManager->create('Magento\Catalog\Model\Product'); // FIXME change to get
+
+        $productsCollection = $product->getCollection()
+            ->addAttributeToFilter('name', ['like' => self::NAMES_PREFIX . '%']);
+
+        foreach ($productsCollection as $product) {
+            $product->delete();
+       }
+
+        return true;
     }
 }
