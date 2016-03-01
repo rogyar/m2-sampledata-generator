@@ -27,7 +27,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
     const DEFAULT_PRODUCT_WEIGHT = '2';
     const DEFAULT_PRODUCT_QTY = '50';
     const CONFIGURABLE_PRODUCTS_PERCENT = 0.3;
-    const CONFIGURABLE_CHILD_LIMIT = 4;
+    const CONFIGURABLE_CHILD_LIMIT = 2;
     const CONFIGURABLE_ATTRIBUTE = 'color';
     const ATTRIBUTE_SET = 11;
     /**2
@@ -147,7 +147,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
             }
 
             // Then create separate simple products
-            while ($this->processedProducts <= $this->getCount()) {
+            while ($this->processedProducts < $this->getCount()) {
                 $this->createSimpleProduct();
             }
 
@@ -203,6 +203,10 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function createConfigurableProduct()
     {
+        if ($this->processedProducts >= $this->getCount()) {
+            return;
+        }
+
         // Process configurable options
 
         $configurableAttribute = $this->attributeRepository->get(self::CONFIGURABLE_ATTRIBUTE);
@@ -211,7 +215,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         // TODO: check if options are available
 
         // Create child simple products
-        $availableProductsCount = $this->getCount() - ($this->processedProducts - 1);
+        $availableProductsCount = $this->getCount() - $this->processedProducts - 1;
 
         if ($availableProductsCount >= self::CONFIGURABLE_CHILD_LIMIT) {
             $childrenLimit = self::CONFIGURABLE_CHILD_LIMIT;
@@ -245,7 +249,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 
         $websitesList = $this->storeManager->getWebsites(true);
         $websitesIds = array_keys($websitesList);
-
+        
         /** @var \Magento\Catalog\Model\Product $configurableProduct */
         $configurableProduct = $this->objectManager->create('Magento\Catalog\Model\Product');
         $configurableProduct
@@ -272,7 +276,9 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         $extensionAttributes->setConfigurableProductLinks($childProductsIds);
         $extensionAttributes->setConfigurableProductOptions([$configurableOption]);
         $configurableProduct->setExtensionAttributes($extensionAttributes);
+
         $this->productRepository->save($configurableProduct);
+
         $this->processedProducts++;
     }
 
