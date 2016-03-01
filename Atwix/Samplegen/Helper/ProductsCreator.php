@@ -4,6 +4,7 @@ namespace Atwix\Samplegen\Helper;
 
 use Magento\Catalog\Api\Data\ProductExtensionFactory;
 use Magento\Catalog\Model\CategoryFactory;
+use Magento\CatalogInventory\Api\StockItemRepositoryInterface;
 use Magento\CatalogWidget\Model\Rule\Condition\ProductFactory;
 use Magento\ConfigurableProduct\Api\Data\OptionInterface;
 use Magento\ConfigurableProduct\Api\Data\OptionValueInterface;
@@ -12,11 +13,11 @@ use \Magento\Framework\ObjectManagerInterface;
 use \Magento\Framework\Registry;
 use \Atwix\Samplegen\Console\Command\GenerateProductsCommand;
 use Magento\Catalog\Model\Product\Type as Type;
-use Magento\Store\Model\StoreManagerInterface;
 use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 
 // TODO refactor for ability to use abstract generator class
+// TODO add a separate atribute instead a name prefix for all items
 
 class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
 {
@@ -59,11 +60,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
      * @var \Magento\Catalog\Model\CategoryFactory
      */
     protected $categoryFactory;
-
-    /**
-     * @var \Magento\Store\Model\StoreManagerInterface
-     */
-    protected $storeManager;
+    
 
     protected $processedProducts = 0;
 
@@ -101,7 +98,6 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         Registry $registry,
         ProductFactory $productFactory,
         CategoryFactory $categoryFactory,
-        \Magento\Store\Model\StoreManagerInterface $storeManager,
         ProductAttributeRepositoryInterface $attributeRepository,
         OptionInterface $configurableOption,
         ProductExtensionFactory $productExtensionFactory,
@@ -115,7 +111,6 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         $this->registry = $registry;
         $this->productFactory = $productFactory;
         $this->categoryFactory = $categoryFactory;
-        $this->storeManager = $storeManager;
         $this->attributeRepository = $attributeRepository;
         $this->configurableOption = $configurableOption;
         $this->productExtensionFactory = $productExtensionFactory;
@@ -162,18 +157,13 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         /** @var \Magento\Catalog\Model\Product $product */
         $product = $this->objectManager->create('Magento\Catalog\Model\Product');
 
-        $websitesList = $this->storeManager->getWebsites(true);
-        $websitesIds = array_keys($websitesList);
-
         $product->setTypeId(Type::TYPE_SIMPLE)
             ->setStoreId(self::DEFAULT_STORE_ID)
             ->setAttributeSetId(self::ATTRIBUTE_SET)
             ->setName(self::NAMES_PREFIX . $this->titlesGenerator->generateProductTitle())
             ->setPrice(self::DEFAULT_PRODUCT_PRICE)
             ->setWeight(self::DEFAULT_PRODUCT_WEIGHT)
-            ->setSku(uniqid())
-            ->setWebsiteIds($websitesIds)
-            ->setQty(self::DEFAULT_PRODUCT_QTY);
+            ->setSku(uniqid());
 
         $productCategories = [];
         if ($forceDefaultCategory) {
@@ -237,6 +227,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
             $optValueId =  is_array($availableOptionsKeys) ?
                 $availableOptions[$availableOptionsKeys[$optCount]]->getValue() :
                 $availableOptions[$availableOptionsKeys]->getValue();
+            // FIXME: sometimes the color attribute value is empty - causes an error
             $product->setCustomAttribute($configurableAttribute->getAttributeCode(), $optValueId);
             $optionValue = $this->optionValue;
             $optionValue->setValueIndex($optValueId);
@@ -245,11 +236,6 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
             $childProductsIds[] = $product->getId();
         }
 
-        // Create configurable product
-
-        $websitesList = $this->storeManager->getWebsites(true);
-        $websitesIds = array_keys($websitesList);
-        
         /** @var \Magento\Catalog\Model\Product $configurableProduct */
         $configurableProduct = $this->objectManager->create('Magento\Catalog\Model\Product');
         $configurableProduct
@@ -260,8 +246,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
             ->setPrice(self::DEFAULT_PRODUCT_PRICE)
             ->setWeight(self::DEFAULT_PRODUCT_WEIGHT)
             ->setSku(uniqid())
-            ->setWebsiteIds($websitesIds)
-            ->setQty(self::DEFAULT_PRODUCT_QTY);
+            ->setCategoriesIds([$this->getProductCategory()]);
 
         $configurableOption = $this->configurableOption;
         $configurableOption->setAttributeId($configurableAttribute->getAttributeId())
