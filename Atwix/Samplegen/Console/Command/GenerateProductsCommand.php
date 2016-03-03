@@ -2,7 +2,6 @@
 
 namespace Atwix\Samplegen\Console\Command;
 
-use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -10,7 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Magento\Framework\App\ObjectManagerFactory;
 use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreManager;
-use Magento\Framework\App\Helper\Context;
+use \Atwix\Samplegen\Model\EntityGeneratorContext as Context;
 
 /**
  * Command for executing cron jobs
@@ -118,8 +117,11 @@ class GenerateProductsCommand extends Command
         $adminAppState = $objectManager->get('Magento\Framework\App\State');
         $adminAppState->setAreaCode(\Magento\Framework\App\Area::AREA_ADMIN);
 
+        $this->context->setParameters($params);
+        $this->context->setObjectManager($objectManager);
+
         $productsCreator = $objectManager->create('Atwix\Samplegen\Helper\ProductsCreator',
-            ['context' => $this->context, 'objectManager' => $objectManager, 'parameters' => $params]);
+            ['context' => $this->context]);
         try {
             $productsCreator->launch();
             $output->writeln('<info>' . 'All operations completed successfully' . '</info>');

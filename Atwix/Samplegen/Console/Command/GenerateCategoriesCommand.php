@@ -2,7 +2,6 @@
 
 namespace Atwix\Samplegen\Console\Command;
 
-use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -10,7 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Magento\Framework\App\ObjectManagerFactory;
 use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreManager;
-use Magento\Framework\App\Helper\Context;
+use \Atwix\Samplegen\Model\EntityGeneratorContext as Context;
 
 /**
  * Command for executing cron jobs
@@ -20,7 +19,7 @@ class GenerateCategoriesCommand extends Command
     const JOB_NAME = 'samplegen:generate:categories';
     const INPUT_KEY_COUNT = 'count';
     const INPUT_KEY_DEPTH = 'depth';
-    const INPUT_KEY_REMOVE = 'removeall'; // TODO: change to remove
+    const INPUT_KEY_REMOVE = 'remove';
 
     /**
      * Object manager factory
@@ -101,12 +100,17 @@ class GenerateCategoriesCommand extends Command
         $params[self::INPUT_KEY_DEPTH] = $input->getOption(self::INPUT_KEY_DEPTH);
         $params[self::INPUT_KEY_REMOVE] = $removeGeneratedCategories;
 
+        $adminAppState = $objectManager->get('Magento\Framework\App\State');
+        $adminAppState->setAreaCode(\Magento\Framework\App\Area::AREA_ADMIN);
+
+        $this->context->setParameters($params);
+        $this->context->setObjectManager($objectManager);
 
         $categoriesCreator = $objectManager->create('Atwix\Samplegen\Helper\CategoriesCreator',
-            ['context' => $this->context, 'objectManager' => $objectManager, 'parameters' => $params]);
+            ['context' => $this->context]);
         try {
             $categoriesCreator->launch();
-            $output->writeln('<info>' . 'Categories were successfully generated' . '</info>');
+            $output->writeln('<info>' . 'All operations completed successfully' . '</info>');
         } catch (\Exception $e) {
             $output->writeln('<error>' . "{$e->getMessage()}" . '</error>');
         }

@@ -7,50 +7,16 @@ use Magento\Catalog\Model\CategoryFactory;
 use Magento\CatalogWidget\Model\Rule\Condition\ProductFactory;
 use Magento\ConfigurableProduct\Api\Data\OptionInterface;
 use Magento\ConfigurableProduct\Api\Data\OptionValueInterface;
-use Magento\Framework\App\Helper\Context;
-use \Magento\Framework\ObjectManagerInterface;
-use \Magento\Framework\Registry;
-use \Atwix\Samplegen\Console\Command\GenerateProductsCommand;
+use Atwix\Samplegen\Model\EntityGeneratorContext as Context;
 use Magento\Catalog\Model\Product\Type as Type;
 use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use Symfony\Component\Config\Definition\Exception\Exception;
+use Magento\Framework\Registry;
 
-// TODO refactor for ability to use abstract generator class
 // TODO add a separate atribute instead a name prefix for all items
 
-class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
+class ProductsCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
 {
-    const NAMES_PREFIX = 'smlpgn_';
-    const DEFAULT_STORE_ID = 0;
-    const DEFAULT_CATEGORY_ID = 2;
-    const DEFAULT_PRODUCT_PRICE = '100';
-    const DEFAULT_PRODUCT_WEIGHT = '2';
-    const DEFAULT_PRODUCT_QTY = '50';
-    const CONFIGURABLE_PRODUCTS_PERCENT = 0.3;
-    const CONFIGURABLE_CHILD_LIMIT = 2;
-    const CONFIGURABLE_ATTRIBUTE = 'color';
-    const ATTRIBUTE_SET = 11;
-    /**2
-     * @var $parameters array
-     */
-    protected $parameters;
-
-    /**
-     * @var \Magento\Framework\ObjectManagerInterface
-     */
-    protected $objectManager;
-
-    /**
-     * @var \Atwix\Samplegen\Helper\TitlesGenerator
-     */
-    protected $titlesGenerator;
-
-    /**
-     * @var \Magento\Framework\Registry
-     */
-    protected $registry;
-
     /**
      * @var \Magento\Catalog\Model\ProductFactory
      */
@@ -61,9 +27,9 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
      */
     protected $categoryFactory;
 
-
-    protected $processedProducts = 0;
-
+    /**
+     * @var array
+     */
     protected $availableCategories;
 
     /**
@@ -91,11 +57,14 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
      */
     protected $productRepository;
 
+    /**
+     * @var array
+     */
+    protected $processedProducts = 0;
+
 
     public function __construct(
         Context $context,
-        ObjectManagerInterface $objectManager,
-        Registry $registry,
         ProductFactory $productFactory,
         CategoryFactory $categoryFactory,
         ProductAttributeRepositoryInterface $attributeRepository,
@@ -103,12 +72,9 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         ProductExtensionFactory $productExtensionFactory,
         OptionValueInterface $optionValue,
         ProductRepositoryInterface $productRepository,
-        $parameters
+        Registry $registry
     )
     {
-        $this->parameters = $parameters;
-        $this->objectManager = $objectManager;
-        $this->registry = $registry;
         $this->productFactory = $productFactory;
         $this->categoryFactory = $categoryFactory;
         $this->attributeRepository = $attributeRepository;
@@ -116,25 +82,17 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         $this->productExtensionFactory = $productExtensionFactory;
         $this->optionValue = $optionValue;
         $this->productRepository = $productRepository;
-        $this->titlesGenerator = $objectManager->create('Atwix\Samplegen\Helper\TitlesGenerator');
+
         parent::__construct($context);
+
+        $this->registry = $registry;
     }
 
-    public function launch()
-    {
-        $this->registry->register('isSecureArea', true);
-
-        if (false == $this->parameters[GenerateProductsCommand::INPUT_KEY_REMOVE]) {
-            return $this->createProducts();
-        } else {
-            return $this->removeGeneratedItems();
-        }
-    }
 
     /**
      * Inits product generation process
      */
-    public function createProducts()
+    public function createEntities()
     {
         if ($this->getCount() > 1) {
 
@@ -193,6 +151,7 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         $product->setCategoryIds($productCategories);
+
         if (false == $doNotSave) {
             $this->productRepository->save($product);
         }
@@ -249,7 +208,6 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
         $configurableProduct->setExtensionAttributes($extensionAttributes);
 
         $this->productRepository->save($configurableProduct);
-
         $this->processedProducts++;
     }
 
@@ -316,8 +274,6 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
             $currentOptionId = array_rand($availableOptions);
             $optValueId = $availableOptions[$currentOptionId]->getValue();
             unset($availableOptions[$currentOptionId]);
-            echo "$currentOptionId Value id is $optValueId \n";
-            //var_dump(array_keys($availableOptions));
 
             $product->setCustomAttribute($configurableAttribute->getAttributeCode(), $optValueId);
             $optionValue = $this->optionValue;
@@ -334,28 +290,18 @@ class ProductsCreator extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
-     * Returns products number to generate
-     *
-     * @return mixed
-     */
-    protected function getCount()
-    {
-        return $this->parameters['count'];
-    }
-
-    /**
      * Removes all generated products
      *
      * @return bool
      */
-    protected function removeGeneratedItems()
+    public function removeEntities()
     {
-        /** @var \Magento\Catalog\Model\Product $product */
         $product = $this->objectManager->create('Magento\Catalog\Model\Product'); // FIXME change to get
 
         $productsCollection = $product->getCollection()
             ->addAttributeToFilter('name', ['like' => self::NAMES_PREFIX . '%']);
 
+        /** @var \Magento\Catalog\Model\Product $product */
         foreach ($productsCollection as $product) {
             $this->productRepository->delete($product);
        }

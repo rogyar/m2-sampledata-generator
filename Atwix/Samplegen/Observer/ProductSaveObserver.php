@@ -33,7 +33,7 @@ class ProductSaveObserver implements ObserverInterface
      */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
-        /** @var /** @var \Magento\Catalog\Model\Product  $product */
+        /** @var \Magento\Catalog\Model\Product  $product */
         $product = $observer->getEvent()->getProduct();
         if (strpos($product->getName(), ProductsCreator::NAMES_PREFIX) !== false) {
             $product->setWebsiteIds($this->getWebsiteIds());
