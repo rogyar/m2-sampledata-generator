@@ -4,7 +4,7 @@ namespace Atwix\Samplegen\Helper;
 
 use Magento\Catalog\Api\Data\ProductExtensionFactory;
 use Magento\Catalog\Model\CategoryFactory;
-use Magento\CatalogWidget\Model\Rule\Condition\ProductFactory;
+use Magento\CatalogWidget\Model\Rule\Condition\ProductFactory; // fixme: that's not exactly the needed factory
 use Magento\ConfigurableProduct\Api\Data\OptionInterface;
 use Magento\ConfigurableProduct\Api\Data\OptionValueInterface;
 use Atwix\Samplegen\Model\EntityGeneratorContext as Context;

@@ -7,6 +7,7 @@ use Magento\Framework\ObjectManagerInterface;
 use Magento\Framework\Registry;
 use Magento\Catalog\Model\CategoryFactory;
 use Magento\Catalog\Model\ProductFactory;
+use \Magento\Store\Model\StoreManagerInterface;
 
 
 class EntityGeneratorContext implements \Magento\Framework\ObjectManager\ContextInterface
@@ -41,6 +42,11 @@ class EntityGeneratorContext implements \Magento\Framework\ObjectManager\Context
      */
     protected $titlesGenerator;
 
+    /**
+     * @var \Magento\Store\Model\StoreManagerInterface
+     */
+    protected $storeManager;
+
 
     /**
      * @param \Psr\Log\LoggerInterface $logger
@@ -60,13 +66,15 @@ class EntityGeneratorContext implements \Magento\Framework\ObjectManager\Context
         Registry $registry,
         ProductFactory $productFactory,
         CategoryFactory $categoryFactory,
-        TitlesGenerator $titlesGenerator
+        TitlesGenerator $titlesGenerator,
+        StoreManagerInterface $storeManager
     ) {
         $this->_moduleManager = $moduleManager;
         $this->_logger = $logger;
         $this->objectManager = $objectManager;
         $this->registry = $registry;
         $this->titlesGenerator = $titlesGenerator;
+        $this->storeManager = $storeManager;
     }
 
     /**
@@ -131,5 +139,13 @@ class EntityGeneratorContext implements \Magento\Framework\ObjectManager\Context
     public function setParameters($parameters)
     {
         $this->parameters = $parameters;
+    }
+
+    /**
+     * @return StoreManagerInterface
+     */
+    public function getStoreManager()
+    {
+        return $this->storeManager;
     }
 }

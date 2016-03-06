@@ -43,7 +43,7 @@ class CategoriesCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
     public function createEntities()
     {
         $this->normalizeDepth();
-        $defaultCategory = $this->objectManager->create('Magento\Catalog\Model\Category')
+        $defaultCategory = $this->objectManager->create('Magento\Catalog\Model\Category') // todo: use factory
             ->load(self::DEFAULT_CATEGORY_ID);
         while ($this->parameters['count'] >= $this->processedCategoriesCount) {
             $currentCategory = $defaultCategory;

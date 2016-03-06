@@ -19,7 +19,9 @@ class EntitiesCreatorAbstract
     const CONFIGURABLE_CHILD_LIMIT = 2;
     const CONFIGURABLE_ATTRIBUTE = 'color';
     const ATTRIBUTE_SET = 11;
-    /**2
+    const DEFAULT_EMAIL_DOMAIN = 'domain.com';
+
+    /**
      * @var $parameters array
      */
     protected $parameters;
@@ -35,6 +37,11 @@ class EntitiesCreatorAbstract
     protected $titlesGenerator;
 
     /**
+     * @var \Magento\Store\Model\StoreManagerInterface
+     */
+    protected $storeManager;
+
+    /**
      * @var \Magento\Framework\Registry
      */
     protected $registry;
@@ -47,6 +54,7 @@ class EntitiesCreatorAbstract
         $this->objectManager = $context->getObjectManager();
         $this->registry = $context->getRegistry();
         $this->titlesGenerator = $context->getTitlesGenerator();
+        $this->storeManager = $context->getStoreManager();
     }
 
     public function launch()
