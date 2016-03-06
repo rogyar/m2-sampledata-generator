@@ -20,9 +20,6 @@ class CustomersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
      */
     protected $customerFactory;
 
-    /** @var CustomerRepositoryInterface  */
-    protected $customerRepository;
-
     /** @var  array */
     protected $websiteIds;
 
@@ -34,7 +31,6 @@ class CustomersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
     )
     {
         $this->customerFactory = $customerFactory;
-        $this->customerRepository = $customerRepository;
         parent::__construct($context);
         $this->registry = $registry;
     }
