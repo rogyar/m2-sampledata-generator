@@ -11,17 +11,17 @@ class CategoriesCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
     /**
      * @var $parameters array
      */
-    protected $parameters;
+    protected $parameters; //todo: remove
 
     /**
      * @var \Magento\Framework\ObjectManagerInterface
      */
-    protected $objectManager;
+    protected $objectManager; //todo: remove
 
     /**
      * @var \Atwix\Samplegen\Helper\TitlesGenerator
      */
-    protected $titlesGenerator;
+    protected $titlesGenerator; //todo: remove
 
     /**
      * @var \Magento\Framework\Registry
@@ -95,6 +95,7 @@ class CategoriesCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
         /** @var \Magento\Catalog\Model\Category $generatedCategory */
         $generatedCategories = $generatedCategories->getItems();
         foreach ($generatedCategories as $generatedCategory) {
+            // TODO: use repository instead
             $generatedCategory->delete();
         }
 

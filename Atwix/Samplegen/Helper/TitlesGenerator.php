@@ -14,6 +14,16 @@ class TitlesGenerator
                         'laborer', 'language', 'lawyer', 'linen', 'locket', 'lumber', 'magic', 'minister', 'mitten',
                         'money'];
 
+    protected $firstNames = ['Mary', 'Anna', 'Ruth', 'Margaret', 'Elizabeth', 'Helen', 'Florence', 'Ethel', 'Emma',
+                             'Bertha', 'Clara', 'Annie', 'Mabel', 'Nellie', 'Nellie', 'Louise', 'Julia', 'Cora', 'Mae',
+                             'Josephine', 'Ruby', 'Lydia', 'Lottie', 'Michel', 'Miquel', 'Reginald', 'Jude',
+                             'Florentino', 'Quinn', 'Marshall', 'Deon', 'Alfonso', 'Jordon', 'Tad', 'Matthew'];
+
+
+    protected $lastNames = ['Lal', 'Maass', 'Wilt', 'Vegas', 'Strum', 'Maxey', 'Enz', 'Mcavoy', 'Galvez', 'Chi',
+                            'Mervis', 'Lapp', 'Seibold', 'Philson', 'Trail', 'Granata', 'Hazelwood', 'Toft', 'Sauve',
+                            'Valverde', 'Hiott', 'Sainz', 'Deno', 'Deering', 'Barbosa', 'Barbosa', 'Vargo', 'Gullion',
+                            'Plant', 'Speas', 'Carrithers'];
 
     public function generateCategoryTitle()
     {
@@ -25,16 +35,25 @@ class TitlesGenerator
         return $this->generateAdjectivesNounPair();
     }
 
-    protected function generateAdjectivesNounPair()
+    public function generateCustomerName()
     {
-        $adjectives = '';
-        for ($cnt = 0; $cnt < 2; $cnt++) {
-            $adjectives .= $this->adjectives[rand(0, (count($this->adjectives) - 1))] . ' ';
-        }
-
-        $noun = $this->nouns[rand(0, (count($this->nouns) - 1))];
-
-        return $adjectives . $noun;
+        return $this->generateTitlePair($this->firstNames, $this->lastNames);
     }
 
+    protected function generateAdjectivesNounPair()
+    {
+        return $this->generateTitlePair($this->adjectives, $this->nouns);
+    }
+
+    protected function generateTitlePair($part1Set, $part2Set)
+    {
+        $part1 = '';
+        for ($cnt = 0; $cnt < 2; $cnt++) {
+            $part1 .= $part1Set[rand(0, (count($part1Set) - 1))] . ' ';
+        }
+
+        $part2 = $part2Set[rand(0, (count($part2Set) - 1))];
+
+        return $part1 . $part2;
+    }
 }
