@@ -55,6 +55,8 @@ class CustomersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
         $customer->setWebsiteId($this->storeManager->getWebsite()->getWebsiteId());
 
         $customer->save($customer);
+
+        return $customer;
     }
 
     /**
