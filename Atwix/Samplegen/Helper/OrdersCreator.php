@@ -10,14 +10,17 @@ use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Quote\Model\QuoteManagement;
 use Magento\Catalog\Model\ProductFactory;
 use Magento\Framework\Data\Form\FormKey;
+use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Service\OrderService;
 use Magento\Quote\Model\Quote\Address\Rate;
+use Magento\Sales\Model\OrderFactory;
 // TODO add a separate atribute instead a name prefix for all items
 
 class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
 {
     const ORDER_SHIPPING_METHOD_CODE = 'freeshipping_freeshipping';
     const ORDER_PAYMENT_METHOD_CODE = 'checkmo';
+    const ORDER_CUSTOMER_EMAIL = 'samplegen@samplegen.dev';
 
     protected $orderSampleData = [
         'address' => [
@@ -85,6 +88,11 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
      */
     protected $addressRate;
 
+    /**
+     * @var \Magento\Sales\Model\OrderFactory
+     */
+    protected $orderFactory;
+
     public function __construct(
         Context $context,
         Registry $registry,
@@ -97,7 +105,8 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
         OrderService $orderService,
         CustomersCreator $customersCreator,
         ProductsCreator $productsCreator,
-        Rate $rate
+        Rate $rate,
+        OrderFactory $orderFactory
     )
     {
         $this->quoteFactory = $quoteFactory;
@@ -110,6 +119,7 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
         $this->customersCreator = $customersCreator;
         $this->productsCreator = $productsCreator;
         $this->addressRate = $rate;
+        $this->orderFactory = $orderFactory;
 
         parent::__construct($context);
         $this->registry = $registry;
@@ -134,55 +144,54 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
      */
     public function createOrder()
     {
-       $store = $this->storeManager->getStore();
-       $websiteId = $this->storeManager->getStore()->getWebsiteId();
-       $customer = $this->getCustomer();
-       $repositoryCustomer = $this->customerRepository->getById($customer->getId());
-       $quote = $this->quoteFactory->create();
-       $quote->setStore($store);
-       $quote->assignCustomer($repositoryCustomer);
-       $this->addItemsToQuote($quote);
+        $store = $this->storeManager->getStore();
+        $websiteId = $this->storeManager->getStore()->getWebsiteId();
+        $customer = $this->getCustomer();
+        $repositoryCustomer = $this->customerRepository->getById($customer->getId());
+        $quote = $this->quoteFactory->create();
+        $quote->setStore($store);
+        $quote->assignCustomer($repositoryCustomer);
+        $this->addItemsToQuote($quote);
+        $quote->getBillingAddress()->addData($this->orderSampleData['address']);
+        $quote->getShippingAddress()->addData($this->orderSampleData['address']);
 
-       $quote->getBillingAddress()->addData($this->orderSampleData['address']);
-       $quote->getShippingAddress()->addData($this->orderSampleData['address']);
 
+        $this->addressRate->setCode(self::ORDER_SHIPPING_METHOD_CODE);
+        $this->addressRate->getPrice(1);
 
-       $this->addressRate->setCode(self::ORDER_SHIPPING_METHOD_CODE);
-       $this->addressRate->getPrice(1);
+        $shippingAddress = $quote->getShippingAddress();
+        $shippingAddress->addShippingRate($this->addressRate);
 
-       $shippingAddress = $quote->getShippingAddress();
-       $shippingAddress->addShippingRate($this->addressRate);
-
-       $shippingAddress->setCollectShippingRates(true)
+        $shippingAddress->setCollectShippingRates(true)
            ->collectShippingRates()
            ->setShippingMethod(self::ORDER_SHIPPING_METHOD_CODE);
-       $quote->setPaymentMethod(self::ORDER_PAYMENT_METHOD_CODE);
-       $quote->setInventoryProcessed(false);
-       $quote->save();
+        $quote->setPaymentMethod(self::ORDER_PAYMENT_METHOD_CODE);
+        $quote->setInventoryProcessed(false);
+        $quote->save();
 
-       $quote->getPayment()->importData(['method' => self::ORDER_PAYMENT_METHOD_CODE]);
-       $quote->collectTotals()->save();
+        $quote->getPayment()->importData(['method' => self::ORDER_PAYMENT_METHOD_CODE]);
+        $quote->collectTotals()->save();
 
-       $order = $this->quoteManagement->submit($quote);
-       $order->setEmailSent(0);
+        $order = $this->quoteManagement->submit($quote);
+        $order->setEmailSent(0);
     }
 
     /**
-     * Returns an existing or newly created customer
+     * Returns newly created customer
      *
      * @return \Magento\Customer\Model\Customer|\Magento\Framework\DataObject
      */
     protected function getCustomer()
     {
-        $customer = $this->customerFactory->create();
-
-        /* Check if there are some generated sample customers */
-        /** @var \Magento\Customer\Model\ResourceModel\Customer\Collection $customersCollection */
-        $customersCollection = $customer->getCollection()->addAttributeToFilter('email',
-            ['like' => self::NAMES_PREFIX . '%']);
-        if ($customersCollection->getSize() > 0) {
-            return $customersCollection->getFirstItem();
-        }
+//        $customer = $this->customerFactory->create();
+//
+//        /* Check if there are some generated sample customers */
+//        /** @var \Magento\Customer\Model\ResourceModel\Customer\Collection $customersCollection */
+//        $customersCollection = $customer->getCollection()->addAttributeToFilter('email',
+//            ['like' => self::NAMES_PREFIX . '%']);
+//        if ($customersCollection->getSize() > 0) {
+//            return $customersCollection->getFirstItem();
+//        }
 
         /* If there are no generated customers - try to create one */
         return $this->customersCreator->createCustomer();
@@ -212,20 +221,23 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
     }
 
     /**
-     * Removes all generated products
+     * Removes all generated orders
      *
      * @return bool
      */
     public function removeEntities()
     {
-        $product = $this->objectManager->create('Magento\Catalog\Model\Product'); // FIXME change to get
+        // FIXME: check this method
+        
+        /** @var Order $orderModel */
+        $orderModel = $this->orderFactory->create();
 
-        $productsCollection = $product->getCollection()
-            ->addAttributeToFilter('name', ['like' => self::NAMES_PREFIX . '%']);
+        $ordersCollection = $orderModel->getCollection()
+            ->addFieldToFilter('customer_email', ['like' => self::NAMES_PREFIX . '%']);
 
-        /** @var \Magento\Catalog\Model\Product $product */
-        foreach ($productsCollection as $product) {
-            $this->productRepository->delete($product);
+        /** @var Order $order */
+        foreach ($ordersCollection as $order) {
+            $order->delete();
        }
 
         return true;
