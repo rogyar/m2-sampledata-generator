@@ -4,20 +4,18 @@ namespace Atwix\Samplegen\Helper;
 
 use Atwix\Samplegen\Model\EntityGeneratorContext as Context;
 use Magento\Framework\Registry;
-use \Magento\Quote\Model\QuoteFactory;
-use \Magento\Customer\Model\CustomerFactory;
-use \Magento\Customer\Api\CustomerRepositoryInterface;
-use \Magento\Quote\Model\QuoteManagement;
-use \Magento\Catalog\Model\ProductFactory;
-use \Magento\Framework\Data\Form\FormKey;
+use Magento\Quote\Model\QuoteFactory;
+use Magento\Customer\Model\CustomerFactory;
+use Magento\Customer\Api\CustomerRepositoryInterface;
+use Magento\Quote\Model\QuoteManagement;
+use Magento\Catalog\Model\ProductFactory;
+use Magento\Framework\Data\Form\FormKey;
 use Magento\Sales\Model\Service\OrderService;
-use Atwix\Samplegen\Helper\ProductsCreator;
-
+use Magento\Quote\Model\Quote\Address\Rate;
 // TODO add a separate atribute instead a name prefix for all items
 
 class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
 {
-
     const ORDER_SHIPPING_METHOD_CODE = 'freeshipping_freeshipping';
     const ORDER_PAYMENT_METHOD_CODE = 'checkmo';
 
@@ -28,6 +26,7 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
             'street' => 'somestreet',
             'city' => 'somecity',
             'country_id' => 'US',
+            'region_id' => '13',
             'region' => 'someregion',
             'postcode' => '91910',
             'telephone' => '111222333',
@@ -81,6 +80,11 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
      */
     protected $productsCreator;
 
+    /**
+     * @var \Magento\Quote\Model\Quote\Address\Rate
+     */
+    protected $addressRate;
+
     public function __construct(
         Context $context,
         Registry $registry,
@@ -92,7 +96,8 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
         FormKey $formKey,
         OrderService $orderService,
         CustomersCreator $customersCreator,
-        ProductsCreator $productsCreator
+        ProductsCreator $productsCreator,
+        Rate $rate
     )
     {
         $this->quoteFactory = $quoteFactory;
@@ -104,6 +109,7 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
         $this->orderService = $orderService;
         $this->customersCreator = $customersCreator;
         $this->productsCreator = $productsCreator;
+        $this->addressRate = $rate;
 
         parent::__construct($context);
         $this->registry = $registry;
@@ -111,7 +117,7 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
 
 
     /**
-     * Inits product generation process
+     * Inits orders generation process
      */
     public function createEntities()
     {
@@ -120,21 +126,33 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
         }
     }
 
-   public function createOrder()
-   {
+
+    /**
+     * Creates a sample order
+     *
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    public function createOrder()
+    {
        $store = $this->storeManager->getStore();
        $websiteId = $this->storeManager->getStore()->getWebsiteId();
        $customer = $this->getCustomer();
+       $repositoryCustomer = $this->customerRepository->getById($customer->getId());
        $quote = $this->quoteFactory->create();
        $quote->setStore($store);
-       $quote->assignCustomer($customer);
-       //$quote->setCurrency();
+       $quote->assignCustomer($repositoryCustomer);
        $this->addItemsToQuote($quote);
 
        $quote->getBillingAddress()->addData($this->orderSampleData['address']);
        $quote->getShippingAddress()->addData($this->orderSampleData['address']);
 
+
+       $this->addressRate->setCode(self::ORDER_SHIPPING_METHOD_CODE);
+       $this->addressRate->getPrice(1);
+
        $shippingAddress = $quote->getShippingAddress();
+       $shippingAddress->addShippingRate($this->addressRate);
+
        $shippingAddress->setCollectShippingRates(true)
            ->collectShippingRates()
            ->setShippingMethod(self::ORDER_SHIPPING_METHOD_CODE);
@@ -147,8 +165,13 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
 
        $order = $this->quoteManagement->submit($quote);
        $order->setEmailSent(0);
-   }
+    }
 
+    /**
+     * Returns an existing or newly created customer
+     *
+     * @return \Magento\Customer\Model\Customer|\Magento\Framework\DataObject
+     */
     protected function getCustomer()
     {
         $customer = $this->customerFactory->create();
@@ -166,6 +189,8 @@ class OrdersCreator extends \Atwix\Samplegen\Helper\EntitiesCreatorAbstract
     }
 
     /**
+     * Add existing or newly created products to the quote
+     *
      * @param \Magento\Quote\Model\Quote $quote
      */
     protected function addItemsToQuote($quote)

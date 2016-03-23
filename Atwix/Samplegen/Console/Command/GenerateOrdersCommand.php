@@ -97,7 +97,7 @@ class GenerateOrdersCommand extends Command
         $this->context->setParameters($params);
         $this->context->setObjectManager($objectManager);
 
-        $productsCreator = $objectManager->create('Atwix\Samplegen\Helper\ProductsCreator',
+        $productsCreator = $objectManager->create('Atwix\Samplegen\Helper\OrdersCreator',
             ['context' => $this->context]);
         try {
             $productsCreator->launch();
@@ -118,7 +118,7 @@ class GenerateOrdersCommand extends Command
         // TODO: check count for negative values
         $messages = [];
         if (false == $count && false == $removeAll) {
-            $messages[] = '<error>No products count specified</error>';
+            $messages[] = '<error>No orders count specified</error>';
         }
 
         return $messages;

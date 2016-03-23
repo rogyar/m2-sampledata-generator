@@ -6,6 +6,7 @@
                 <item name="sampleCatsGenerateCommand" xsi:type="object">Atwix\Samplegen\Console\Command\GenerateCategoriesCommand</item>
                 <item name="sampleProdsGenerateCommand" xsi:type="object">Atwix\Samplegen\Console\Command\GenerateProductsCommand</item>
                 <item name="sampleCustomersGenerateCommand" xsi:type="object">Atwix\Samplegen\Console\Command\GenerateCustomersCommand</item>
+                <item name="sampleOrdersGenerateCommand" xsi:type="object">Atwix\Samplegen\Console\Command\GenerateOrdersCommand</item>
             </argument>
         </arguments>
     </type>
