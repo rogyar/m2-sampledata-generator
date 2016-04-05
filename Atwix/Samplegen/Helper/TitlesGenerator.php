@@ -32,7 +32,7 @@ class TitlesGenerator
 
     public function generateProductTitle()
     {
-        return $this->generateAdjectivesNounPair();
+        return $this->generateAdjectivesNounPair() . '-' . uniqid();
     }
 
     public function generateCustomerName()
